@@ -141,7 +141,7 @@
       "response": []
     },
     {
-      "name": "TEST_MOVIMIENTO_BASIC_AUTH",
+      "name": "TEST_MOVIMIENTO_SERVICE_BASIC_AUTH",
       "request": {
         "auth": {
           "type": "basic",
@@ -170,6 +170,85 @@
           "path": [
             "api",
             "movimientos"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "TEST_TRANSACCION_KAFKA",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "usuario",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "1234",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"cuentaId\": 103,\r\n  \"tipo\": \"RETIRO\",\r\n  \"monto\": 500\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8083/api/transacciones",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8083",
+          "path": [
+            "api",
+            "transacciones"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "TEST_CONFIG_",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "usuario",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "1234",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8888/movimiento-service/default",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "movimiento-service",
+            "default"
           ]
         }
       },

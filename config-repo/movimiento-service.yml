@@ -16,10 +16,22 @@ spring:
       ddl-auto: update
     show-sql: true
 
+  kafka:
+    bootstrap-servers:
+      - localhost:29092
+      - localhost:39092
+      - localhost:49092
+
+    consumer:
+      group-id: movimiento-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+    properties:
+      spring.json.trusted.packages: "*"
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
-
-mensaje:
-  prueba: Movimiento Service configurado desde Config Server
