@@ -29,6 +29,9 @@
     {
       "name": "TEST_CTA_SERVICE",
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "header": [],
         "url": {
@@ -48,19 +51,14 @@
       "response": []
     },
     {
-      "name": "TEST_CTA_BASIC_AUTH",
+      "name": "TEST_CTA_BEARER_AUTH",
       "request": {
         "auth": {
-          "type": "basic",
-          "basic": [
+          "type": "bearer",
+          "bearer": [
             {
-              "key": "username",
-              "value": "usuario",
-              "type": "string"
-            },
-            {
-              "key": "password",
-              "value": "1234",
+              "key": "token",
+              "value": "",
               "type": "string"
             }
           ]
@@ -87,16 +85,11 @@
       "name": "TEST_CTA_BASIC_AUTH + MOVIMIENTO SERVICE",
       "request": {
         "auth": {
-          "type": "basic",
-          "basic": [
+          "type": "bearer",
+          "bearer": [
             {
-              "key": "username",
-              "value": "usuario",
-              "type": "string"
-            },
-            {
-              "key": "password",
-              "value": "1234",
+              "key": "token",
+              "value": "",
               "type": "string"
             }
           ]
@@ -123,6 +116,9 @@
     {
       "name": "TEST_MOVIMIENTO_SERVICE",
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "header": [],
         "url": {
@@ -249,6 +245,54 @@
           "path": [
             "movimiento-service",
             "default"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "TEST_AUTH_SERVER",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "banco-client",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "banco-secret",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "key": "scope",
+              "value": "read write"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:9000/oauth2/token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "9000",
+          "path": [
+            "oauth2",
+            "token"
           ]
         }
       },

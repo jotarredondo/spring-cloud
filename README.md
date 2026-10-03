@@ -1,396 +1,68 @@
-# Sistema Bancario con Microservicios, Spring Cloud y Apache Kafka
+Desarrollando microservicios y resiliencia en la nube con Spring Cloud
 
-Proyecto desarrollado para la asignatura **Desarrollo Backend III – Duoc UC**.
+## Descripción
 
-La solución implementa una arquitectura basada en microservicios utilizando **Spring Boot, Spring Cloud, Eureka, Config Server, Resilience4j y Apache Kafka**, permitiendo comunicación síncrona y asíncrona entre los distintos servicios del sistema bancario.
+Proyecto desarrollado para la actividad sumativa de Semana 8 de Desarrollo Backend III.
 
-Durante la Semana 6 se implementaron mecanismos de descubrimiento de servicios, configuración centralizada, seguridad y tolerancia a fallos.
+La solución implementa una arquitectura de microservicios utilizando Spring Cloud, OAuth2.0, Resilience4j, Docker, Docker Compose y mensajería asíncrona con Apache Kafka.
 
-Durante la Semana 7 se extendió la arquitectura incorporando comunicación asíncrona orientada a eventos mediante Apache Kafka.
+## Arquitectura
 
----
+La solución está compuesta por los siguientes servicios:
 
-## Objetivo
+- Eureka Server
+- Config Server
+- Authorization Server
+- Cuenta Service
+- Movimiento Service
+- Transacción Service
 
-El objetivo del proyecto es implementar una arquitectura distribuida de microservicios que permita:
+### Puertos
 
-- Centralizar la configuración de los microservicios mediante Spring Cloud Config.
-- Registrar y descubrir servicios utilizando Eureka.
-- Implementar comunicación entre microservicios.
-- Incorporar autenticación mediante Spring Security.
-- Implementar tolerancia a fallos mediante Resilience4j.
-- Incorporar una arquitectura orientada a eventos.
-- Publicar y consumir eventos de manera asíncrona mediante Apache Kafka.
-- Permitir escalabilidad mediante particiones y grupos de consumidores.
+| Servicio | Puerto |
+|---|---:|
+| Eureka Server | 8761 |
+| Config Server | 8888 |
+| Auth Server | 9000 |
+| Cuenta Service | 8081 |
+| Movimiento Service | 8082 |
+| Transacción Service | 8083 |
 
----
+## Seguridad OAuth2.0
 
-## Arquitectura general
+Se implementó un Authorization Server que genera tokens JWT mediante OAuth2.0.
 
-El proyecto está compuesto por los siguientes componentes:
+El microservicio `cuenta-service` funciona como Resource Server y protege sus endpoints mediante Bearer Token.
 
-| Componente | Puerto | Función |
-|---|---:|---|
-| Eureka Server | 8761 | Registro y descubrimiento de microservicios |
-| Config Server | 8888 | Configuración centralizada |
-| cuenta-service | 8081 | Gestión de cuentas y consulta de movimientos |
-| movimiento-service | 8082 | Gestión y consumo de movimientos |
-| transaccion-service | 8083 | Producción de eventos de transacciones |
-| Kafka UI | 8090 | Administración y visualización de Kafka |
-| Kafka Broker 1 | 29092 | Broker Kafka |
-| Kafka Broker 2 | 39092 | Broker Kafka |
-| Kafka Broker 3 | 49092 | Broker Kafka |
+### Obtención de token
 
----
+POST http://localhost:9000/oauth2/token
 
-## Estructura del proyecto
+Basic Auth:
 
-```text
-proyecto/
-│
-├── eureka-server/
-│
-├── config-server/
-│
-├── config-repo/
-│   ├── cuenta-service.yml
-│   ├── movimiento-service.yml
-│   └── transaccion-service.yml
-│
-├── cuenta-service/
-│
-├── movimiento-service/
-│
-├── transaccion-service/
-│
-├── kafka/
-│   └── docker-compose.yml
-│
-├── docs/
-│   └── arquitectura-eventos.png
-│
-└── README.md
-```
+- Client ID: banco-client
+- Client Secret: banco-secret
 
----
+Body x-www-form-urlencoded:
 
-# Spring Cloud
+- grant_type=client_credentials
+- scope=read write
 
-## Eureka Server
+### Endpoint protegido
 
-Eureka permite que los microservicios se registren dinámicamente y puedan localizarse utilizando su nombre lógico en lugar de depender directamente de direcciones IP o puertos.
-
-El servidor Eureka se ejecuta en:
-
-```text
-http://localhost:8761
-```
-
-Los servicios registrados son:
-
-```text
-CUENTA-SERVICE
-MOVIMIENTO-SERVICE
-TRANSACCION-SERVICE
-```
-
----
-
-## Config Server
-
-Spring Cloud Config Server centraliza la configuración de los microservicios.
-
-Se ejecuta en:
-
-```text
-http://localhost:8888
-```
-
-Las configuraciones se encuentran en:
-
-```text
-config-repo/
-```
-
-Ejemplo:
-
-```text
-config-repo/movimiento-service.yml
-```
-
-Para verificar la configuración entregada a un servicio puede utilizarse:
-
-```text
-GET http://localhost:8888/movimiento-service/default
-```
-
----
-
-# Microservicios
-
-## cuenta-service
-
-Puerto:
-
-```text
-8081
-```
-
-Este microservicio permite gestionar cuentas y consultar sus movimientos.
-
-Además, se comunica con `movimiento-service` mediante descubrimiento de servicios proporcionado por Eureka.
-
-Ejemplo:
-
-```http
 GET http://localhost:8081/api/cuentas/103/movimientos
-```
 
-La comunicación utiliza el nombre lógico:
+Sin token válido, el servicio responde 401 Unauthorized.
 
-```text
-MOVIMIENTO-SERVICE
-```
+Con Bearer Token válido, el servicio permite acceder al recurso protegido.
 
-evitando utilizar directamente una dirección física del servicio.
+## Resilience4j
 
----
+`cuenta-service` consume `movimiento-service`.
 
-## movimiento-service
+Se implementó Circuit Breaker con Resilience4j para manejar la indisponibilidad del servicio de movimientos.
 
-Puerto:
-
-```text
-8082
-```
-
-Este servicio administra los movimientos bancarios almacenados en MySQL.
-
-Durante la Semana 7 se agregó además un consumidor Kafka encargado de escuchar eventos provenientes del topic:
-
-```text
-transacciones-bancarias
-```
-
-El consumidor pertenece al grupo:
-
-```text
-movimiento-group
-```
-
-Cuando recibe un evento se procesa de manera asíncrona.
-
-Ejemplo de salida:
-
-```text
-Evento recibido desde Kafka ->
-Cuenta: 103 |
-Tipo: RETIRO |
-Monto: 2500 |
-Fecha: 2026-09-26T10:01:26
-```
-
----
-
-## transaccion-service
-
-Puerto:
-
-```text
-8083
-```
-
-Este microservicio fue incorporado como productor de eventos Kafka.
-
-Recibe una transacción mediante una petición HTTP y publica un evento en Kafka.
-
-Endpoint:
-
-```http
-POST http://localhost:8083/api/transacciones
-```
-
-Ejemplo de petición:
-
-```json
-{
-  "cuentaId": 103,
-  "tipo": "RETIRO",
-  "monto": 2500
-}
-```
-
-Respuesta:
-
-```text
-Transaccion enviada a Kafka
-```
-
-El servicio agrega automáticamente la fecha de la transacción antes de publicar el evento.
-
----
-
-# Arquitectura orientada a eventos
-
-La solución utiliza una arquitectura orientada a eventos basada en Apache Kafka.
-
-`transaccion-service` actúa como **productor**, mientras que `movimiento-service` actúa como **consumidor**.
-
-El flujo principal es:
-
-```text
-transaccion-service
-        |
-        | TransaccionEvent
-        v
-Apache Kafka
-Topic: transacciones-bancarias
-        |
-        | movimiento-group
-        v
-movimiento-service
-```
-
-El diagrama completo de arquitectura se encuentra en:
-
-```text
-docs/arquitectura-eventos.png
-```
-
-![Arquitectura orientada a eventos](docs/arquitectura-eventos.png)
-
----
-
-## Evento utilizado
-
-Los eventos enviados a Kafka utilizan la siguiente estructura:
-
-```json
-{
-  "cuentaId": 103,
-  "tipo": "RETIRO",
-  "monto": 2500,
-  "fecha": "2026-09-26T10:01:26"
-}
-```
-
-La clase utilizada para representar el evento es:
-
-```text
-TransaccionEvent
-```
-
-Sus principales atributos son:
-
-```text
-cuentaId
-tipo
-monto
-fecha
-```
-
----
-
-# Apache Kafka
-
-Kafka se ejecuta mediante Docker Compose.
-
-La infraestructura utilizada contiene:
-
-```text
-3 ZooKeeper
-3 Kafka Brokers
-1 Kafka UI
-```
-
-Kafka UI se encuentra disponible en:
-
-```text
-http://localhost:8090
-```
-
----
-
-## Topic
-
-El topic utilizado por el sistema es:
-
-```text
-transacciones-bancarias
-```
-
-Configuración:
-
-```text
-Partitions: 3
-Replication Factor: 2
-```
-
-Esta configuración permite distribuir los mensajes entre diferentes particiones y mantener réplicas del contenido en distintos brokers.
-
----
-
-## Creación del topic
-
-El topic puede crearse ejecutando:
-
-```bash
-docker exec -it kafka-1 kafka-topics \
-  --create \
-  --topic transacciones-bancarias \
-  --bootstrap-server kafka-1:9092 \
-  --partitions 3 \
-  --replication-factor 2
-```
-
-Para revisar su configuración:
-
-```bash
-docker exec -it kafka-1 kafka-topics \
-  --describe \
-  --topic transacciones-bancarias \
-  --bootstrap-server kafka-1:9092
-```
-
----
-
-# Flujo de comunicación asíncrona
-
-El flujo implementado funciona de la siguiente forma:
-
-1. Un cliente realiza una petición HTTP a `transaccion-service`.
-
-2. `transaccion-service` crea un objeto `TransaccionEvent`.
-
-3. El evento se publica en:
-
-```text
-transacciones-bancarias
-```
-
-4. Kafka almacena el evento en una de las tres particiones disponibles.
-
-5. `movimiento-service` permanece suscrito al topic.
-
-6. El grupo:
-
-```text
-movimiento-group
-```
-
-recibe y procesa los eventos.
-
-7. La comunicación ocurre de manera asíncrona, por lo que el productor y consumidor no necesitan ejecutarse de manera sincronizada.
-
----
-
-# Tolerancia a fallos con Resilience4j
-
-La comunicación síncrona entre `cuenta-service` y `movimiento-service` utiliza Resilience4j para proporcionar tolerancia a fallos.
-
-Si `movimiento-service` no está disponible, `cuenta-service` utiliza un mecanismo de fallback.
-
-Ejemplo:
+Cuando `movimiento-service` no está disponible, el sistema responde mediante un fallback:
 
 ```json
 {
@@ -399,328 +71,160 @@ Ejemplo:
 }
 ```
 
-Esto permite que el servicio principal continúe respondiendo aunque una dependencia se encuentre temporalmente fuera de servicio.
+## Mensajería asíncrona con Kafka
 
----
+La arquitectura utiliza Kafka para la comunicación entre:
 
-# Seguridad
+transaccion-service -> Kafka -> movimiento-service
 
-Los microservicios incorporan Spring Security.
+Topic utilizado:
 
-Los endpoints protegidos utilizan autenticación HTTP Basic.
+`transacciones-bancarias`
 
-Para efectos de desarrollo y pruebas académicas se utilizan credenciales configuradas localmente.
+Configuración del topic:
 
-> Las credenciales y contraseñas reales no deben almacenarse públicamente en el repositorio.
+- Particiones: 3
+- Factor de replicación: 2
+- In Sync Replicas: 6 de 6
+- URP: 0
 
-Ejemplo en Postman:
+Kafka se ejecuta en una instancia AWS EC2 mediante Docker Compose.
 
-```text
-Authorization
-Type: Basic Auth
+`transaccion-service` publica eventos de transacciones y `movimiento-service` los consume de forma asíncrona.
+
+### Ejemplo de transacción
+
+POST http://localhost:8083/api/transacciones
+
+```json
+{
+  "cuentaId": 103,
+  "tipo": "RETIRO",
+  "monto": 500
+}
 ```
 
-Una petición sin credenciales válidas genera:
+## Docker
 
-```text
-401 Unauthorized
-```
+Cada servicio posee su propio Dockerfile.
 
-Mientras que una petición correctamente autenticada permite acceder al recurso.
+Imágenes utilizadas:
 
----
+- eureka-server:1.0
+- config-server:1.0
+- auth-server:1.0
+- cuenta-service:1.0
+- movimiento-service:1.0
+- transaccion-service:1.0
 
-# Base de datos
+## Docker Compose
 
-`movimiento-service` utiliza MySQL.
+Los servicios Spring se orquestan mediante Docker Compose.
 
-Base de datos utilizada:
-
-```text
-banco_bff
-```
-
-La configuración de conexión se administra mediante Config Server.
-
-Ejemplo:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/banco_bff
-    username: root
-```
-
-La contraseña debe mantenerse fuera de repositorios públicos.
-
----
-
-# Requisitos
-
-Para ejecutar el proyecto es necesario disponer de:
-
-```text
-Java 21
-Maven
-Docker Desktop
-MySQL 8
-Git
-Postman
-```
-
-También se recomienda utilizar:
-
-```text
-IntelliJ IDEA
-```
-
----
-
-# Ejecución del proyecto
-
-## 1. Iniciar MySQL
-
-Verificar que MySQL se encuentre ejecutándose y que exista la base de datos:
-
-```text
-banco_bff
-```
-
----
-
-## 2. Iniciar Kafka
-
-Desde la carpeta:
-
-```text
-kafka/
-```
-
-ejecutar:
+Para iniciar:
 
 ```bash
 docker compose up -d
 ```
 
-Verificar los contenedores:
+Para verificar:
 
 ```bash
-docker ps
+docker compose ps
 ```
 
-Luego ingresar a:
-
-```text
-http://localhost:8090
-```
-
-y comprobar que los tres brokers estén disponibles.
-
----
-
-## 3. Crear el topic
-
-Si el topic todavía no existe:
+Para detener:
 
 ```bash
-docker exec -it kafka-1 kafka-topics \
-  --create \
-  --topic transacciones-bancarias \
-  --bootstrap-server kafka-1:9092 \
-  --partitions 3 \
-  --replication-factor 2
+docker compose down
 ```
 
----
+## Kafka en AWS EC2
 
-## 4. Iniciar Eureka Server
+Kafka se ejecuta en una instancia EC2 utilizando Docker Compose.
 
-Ejecutar:
+Componentes:
 
-```text
-eureka-server
-```
+- 3 brokers Kafka
+- 3 nodos ZooKeeper
+- Kafka UI
 
-Verificar:
+Puertos externos:
 
-```text
-http://localhost:8761
-```
+- 29092
+- 39092
+- 49092
+- 8090
 
----
+El cluster utiliza una Elastic IP para permitir la conexión desde los microservicios ejecutados localmente en Docker.
 
-## 5. Iniciar Config Server
+## Configuración centralizada
 
-Ejecutar:
+Los microservicios consumen sus configuraciones desde Spring Cloud Config Server.
 
-```text
-config-server
-```
+Los archivos de configuración se almacenan en:
 
-Verificar:
+`config-repo/`
 
-```text
-http://localhost:8888
-```
+Entre las propiedades centralizadas se encuentran:
 
----
+- puertos
+- datasource
+- Eureka
+- Kafka
+- OAuth2 Resource Server
+- Resilience4j
 
-## 6. Iniciar movimiento-service
+## Ejecución de la solución
 
-Ejecutar:
+1. Iniciar la instancia EC2.
+2. Levantar Kafka con Docker Compose en EC2.
+3. Verificar los brokers en Kafka UI.
+4. Crear el topic `transacciones-bancarias`.
+5. Levantar los microservicios localmente mediante Docker Compose.
+6. Verificar el registro de servicios en Eureka.
+7. Obtener un token OAuth2.
+8. Probar el endpoint protegido de `cuenta-service`.
+9. Enviar una transacción desde `transaccion-service`.
+10. Verificar el mensaje en Kafka UI.
+11. Verificar el consumo del evento en `movimiento-service`.
+12. Detener `movimiento-service` para probar el Circuit Breaker.
+13. Verificar la respuesta fallback desde `cuenta-service`.
 
-```text
-movimiento-service
-```
+## Evidencias
 
-Puerto:
+Se incluyen capturas de:
 
-```text
-8082
-```
+- Generación de token OAuth2
+- Respuesta 401 sin token
+- Respuesta exitosa con Bearer Token
+- Imágenes Docker
+- Docker Compose con servicios activos
+- Servicios registrados en Eureka
+- Kafka ejecutándose en EC2
+- Kafka UI con 3 brokers
+- Topic `transacciones-bancarias`
+- Mensaje publicado en Kafka
+- Evento consumido por `movimiento-service`
+- Circuit Breaker y respuesta fallback
 
-Al iniciar correctamente debería conectarse a Kafka utilizando:
-
-```text
-movimiento-group
-```
-
----
-
-## 7. Iniciar cuenta-service
-
-Ejecutar:
-
-```text
-cuenta-service
-```
-
-Puerto:
-
-```text
-8081
-```
-
----
-
-## 8. Iniciar transaccion-service
-
-Ejecutar:
-
-```text
-transaccion-service
-```
-
-Puerto:
-
-```text
-8083
-```
-
----
-
-# Prueba de Kafka
-
-Realizar:
-
-```http
-POST http://localhost:8083/api/transacciones
-```
-
-Body:
-
-```json
-{
-  "cuentaId": 103,
-  "tipo": "RETIRO",
-  "monto": 2500
-}
-```
-
-El productor debe responder:
-
-```text
-Transaccion enviada a Kafka
-```
-
-Posteriormente, en la consola de `movimiento-service` debería visualizarse:
-
-```text
-Evento recibido desde Kafka ->
-Cuenta: 103 |
-Tipo: RETIRO |
-Monto: 2500 |
-Fecha: ...
-```
-
-El evento también puede visualizarse desde Kafka UI:
-
-```text
-Topics
-→ transacciones-bancarias
-→ Messages
-```
-
----
-
-# Prueba de tolerancia a fallos
-
-Con todos los servicios funcionando:
-
-```http
-GET http://localhost:8081/api/cuentas/103/movimientos
-```
-
-La respuesta contiene los movimientos asociados a la cuenta.
-
-Posteriormente se puede detener `movimiento-service` y repetir la petición.
-
-Resilience4j activa el fallback:
-
-```json
-{
-  "mensaje": "Movimiento Service no disponible",
-  "movimientos": []
-}
-```
-
----
-
-# Escalabilidad
-
-La infraestructura Kafka utiliza:
-
-```text
-3 brokers
-3 particiones
-Replication Factor: 2
-```
-
-La utilización de particiones permite distribuir eventos y posibilita que varios consumidores pertenecientes al mismo consumer group puedan procesar mensajes en paralelo.
-
-Kafka permite además mantener diferentes consumer groups para que múltiples microservicios puedan reaccionar independientemente ante un mismo evento.
-
----
-
-# Tecnologías utilizadas
+## Tecnologías utilizadas
 
 - Java 21
-- Spring Boot 4
+- Spring Boot
 - Spring Cloud
-- Spring Cloud Config
-- Netflix Eureka
 - Spring Security
+- OAuth2
+- JWT
 - Resilience4j
 - Apache Kafka
-- Spring Kafka
+- ZooKeeper
 - Docker
 - Docker Compose
-- Kafka UI
 - MySQL
+- AWS EC2
 - Maven
-- Postman
-- Git
-- GitHub
 
----
+## Autor
 
+Jose Arredondo
